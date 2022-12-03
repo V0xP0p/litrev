@@ -35,19 +35,19 @@ class LitRev:
                    drop_values):
 
         df_final = df.assign(var1=df["Author Keywords"].str.split(';'), var2=df["IEEE Terms"].str.split(';'))
-        df_final.loc[df_final['var1'].isnull(), ['var1']] = df_final.loc[df_final['var1'].isnull(), 'var1'].apply(
-            lambda x: [])
-        df_final.loc[df_final['var2'].isnull(), ['var2']] = df_final.loc[df_final['var2'].isnull(), 'var2'].apply(
-            lambda x: [])
+
+        df_final['var1'] = df_final['var1'].apply(lambda d: d if isinstance(d, list) else [])
+        df_final['var2'] = df_final['var2'].apply(lambda d: d if isinstance(d, list) else [])
         df_final['Terms'] = df_final['var1'] + df_final['var2']
 
         df_final = df_final.drop(['var1', 'var2', 'Author Keywords', 'IEEE Terms'], axis=1)
         df_final['Terms'] = df_final['Terms'].map(lambda x: list(map(lambda y: y.lower(), x)), na_action='ignore')
         df_final['Terms'] = df_final['Terms'].map(lambda x: list(set(x)), na_action='ignore')
         # remove values matching drop list
+        # if drop_values:
+        df_final = df_final.explode('Terms')
+        df_final['Terms'] = df_final['Terms'].fillna('None')
         if drop_values:
-            df_final = df_final.explode('Terms')
-            df_final['Terms'] = df_final['Terms'].fillna('None')
             df_final = df_final[~df_final.Terms.str.contains('|'.join(drop_values))]
 
         return df_final
@@ -86,8 +86,7 @@ class LitRev:
 
         return pd.DataFrame({'Term': reduced_terms, 'Count': reduced_count, 'Citations': reduced_citations})
 
-    @staticmethod
-    def plot_common_terms(df,
+    def plot_common_terms(self,
                           style="white",
                           sizes=(40, 400),
                           alpha=.5,
@@ -102,7 +101,7 @@ class LitRev:
         # Plot miles per gallon against horsepower with other semantics
         sns.relplot(x="Count", y="Term", size="Citations",
                     sizes=sizes, alpha=alpha, palette=palette,
-                    height=height, data=df)
+                    height=height, data=self.top_counts)
         plt.title(title)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
@@ -135,3 +134,9 @@ class LitRev:
         plt.xticks([year for year in range(self.year_start, self.year_end)])
         plt.ylabel(ylabel)
         plt.title(title)
+
+
+if __name__ == "__main__":
+    df = pd.read_csv("export2022.12.02-16.15.50.csv")
+    covid_lit = LitRev(df, year_start=2020)
+
